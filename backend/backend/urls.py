@@ -17,9 +17,9 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
-from api.views import summarize
+from api.views import SummarizeView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/summarize/", summarize),
+    path("api/summarize/", SummarizeView.as_view(), name="summarize"),
 ]
