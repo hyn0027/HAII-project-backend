@@ -30,5 +30,5 @@ In the video walkthrough, you should also describe verbally (1) how the things y
 
 ## Evaluation of your submission (code and video walkthrough) [70 points in total]
 
-- [35 points] Submit a zip file or a Github repo containing all of your code resources and other resources that make your application run. Please include a README file that specifies what open-source code you imported (if any), what changes you made, and what new code you implemented. (If you built your application based on any open-source initial code, we expect you make nontrivial changes to the code.) 
+- [35 points] Submit a zip file or a Github repo containing all of your code resources and other resources that make your application run. Please include a README file that specifies what open-source code you imported (if any), what changes you made, and what new code you implemented. (If you built your application based on any open-source initial code, we expect you make nontrivial changes to the code.)
 - [35 points] Video walkthrough (screen capture with a voice-over) that clearly demonstrates what your application does and how the user interacts with it. Explain at least one design decision that is influenced by the class. Explain the insights you learned from the pilot user study.
