@@ -1,9 +1,10 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+import random
 
 
-class SummarizeView(APIView):
+class KeywordView(APIView):
     def post(self, request):
         passage = request.data.get("passage", "")
         if not passage:
@@ -11,6 +12,17 @@ class SummarizeView(APIView):
                 {"error": "No passage provided"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Fake summarization (you'll replace this with actual logic later)
-        summary = "example_summary"
-        return Response({"summary": summary}, status=status.HTTP_200_OK)
+        passage_split_by_paragraphs = passage.split("\n")
+        res = []
+        for paragraph in passage_split_by_paragraphs:
+            words = paragraph.split(" ")
+            res_paragraph = []
+            for word in words:
+                if random.random() < 0.3:
+                    res_paragraph.append(
+                        {"word": word, "explanation": "example_explanation"}
+                    )
+                else:
+                    res_paragraph.append({"word": word})
+            res.append(res_paragraph)
+        return Response({"keywords_with_expanations": res}, status=status.HTTP_200_OK)
