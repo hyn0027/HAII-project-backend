@@ -17,9 +17,10 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
-from api.views import KeywordView
+from api.views import KeywordView, NewKeywordView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/get_keywords/", KeywordView.as_view(), name="get_keywords"),
+    path("api/new_keyword/", NewKeywordView.as_view(), name="new_keywords"),
 ]

@@ -1,4 +1,5 @@
 from openai import OpenAI
+import json
 
 
 def call_openai_model(
@@ -15,3 +16,21 @@ def call_openai_model(
         **kwargs,
     )
     return response.choices[0].message.content
+
+
+def call_model_with_json_response(
+    system_prompt, user_prompt, retries=5, temperature=0.0
+):
+    for _ in range(retries):
+        try:
+            result = call_openai_model(
+                model="gpt-4o",
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=temperature,
+                response_format={"type": "json_object"},
+            )
+            return json.loads(result)
+        except Exception as e:
+            print(f"Error calling model: {e}")
+    return None
