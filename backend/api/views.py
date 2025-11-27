@@ -7,7 +7,6 @@ from .llm_interface import call_model_with_json_response
 
 class KeywordView(APIView):
     def _split_passage(self, doc):
-        # ask a model, split the passage into keyword list
         system_prompt = (
             "You are an article analysis assistant. "
             "You will be provided with a passage from an article. "
@@ -64,7 +63,7 @@ class KeywordView(APIView):
                 if word_obj["word"].strip() != "" and not re.match(
                     r'^[\.,\?\:"\(\);\!\[\]\{\}<>]+$', word_obj["word"]
                 ):
-                    word_set.add(word_obj["word"])
+                    word_set.add(word_obj["word"].lower().strip())
         return word_set
 
     def post(self, request):
@@ -119,7 +118,7 @@ class KeywordView(APIView):
             explanation = item["explanation"]
             for paragraph in split_res:
                 for word_obj in paragraph:
-                    if word_obj["word"] == word:
+                    if word_obj["word"].lower().strip() == word.lower().strip():
                         word_obj["explanation"] = explanation
         return Response(
             {"keywords_with_explanations": split_res}, status=status.HTTP_200_OK
@@ -158,7 +157,7 @@ class NewKeywordView(APIView):
             explanation = item["explanation"]
             for paragraph in keywords_with_explanations:
                 for word_obj in paragraph:
-                    if word_obj["word"] == word:
+                    if word_obj["word"].lower().strip() == word.lower().strip():
                         word_obj["explanation"] = explanation
         return Response(
             {"keywords_with_explanations": keywords_with_explanations},
