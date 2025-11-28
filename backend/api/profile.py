@@ -53,6 +53,9 @@ class SignupView(View):
             session["user_id"] = user.id
             session["username"] = user.username
             session.save()
+            print(
+                f"Debug: Created session for user {user.username} with key: {session.session_key}"
+            )  # Debug log
 
             response = JsonResponse(
                 {
@@ -66,7 +69,14 @@ class SignupView(View):
                     },
                 }
             )
-            response.set_cookie("sessionid", session.session_key, httponly=True)
+            response.set_cookie(
+                "sessionid",
+                session.session_key,
+                httponly=False,
+                samesite="None",
+                secure=True,
+                max_age=1209600,
+            )
             return response
 
         except json.JSONDecodeError:
@@ -123,7 +133,14 @@ class LoginView(View):
                     },
                 }
             )
-            response.set_cookie("sessionid", session.session_key, httponly=True)
+            response.set_cookie(
+                "sessionid",
+                session.session_key,
+                httponly=False,
+                samesite="None",
+                secure=True,
+                max_age=1209600,
+            )
             return response
 
         except json.JSONDecodeError:
@@ -153,21 +170,31 @@ class LogoutView(View):
         except Exception as e:
             return JsonResponse({"success": False, "message": str(e)}, status=500)
 
+
 def get_user_from_session(request):
     """Helper method to get user from session"""
     session_key = request.COOKIES.get("sessionid")
+    print(f"Debug: Session key from cookies: {session_key}")  # Debug log
+    print(f"Debug: All cookies: {request.COOKIES}")  # Debug log
+
     if not session_key:
+        print("Debug: No session key found in cookies")  # Debug log
         return None
 
     try:
         session = Session.objects.get(session_key=session_key)
         session_data = session.get_decoded()
         user_id = session_data.get("user_id")
+        print(f"Debug: Found session data: {session_data}")  # Debug log
         if user_id:
-            return User.objects.get(id=user_id, is_active=True)
-    except (Session.DoesNotExist, User.DoesNotExist):
+            user = User.objects.get(id=user_id, is_active=True)
+            print(f"Debug: Found user: {user.username}")  # Debug log
+            return user
+    except (Session.DoesNotExist, User.DoesNotExist) as e:
+        print(f"Debug: Session/User lookup failed: {e}")  # Debug log
         pass
     return None
+
 
 @method_decorator(csrf_exempt, name="dispatch")
 class ProfileView(View):
@@ -188,9 +215,6 @@ class ProfileView(View):
                     "username": user.username,
                     "email": user.email,
                     "bio": user.bio,
-                    "created_at": (
-                        user.created_at.isoformat() if user.created_at else None
-                    ),
                 },
             }
         )
