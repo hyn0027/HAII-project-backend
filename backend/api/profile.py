@@ -153,28 +153,28 @@ class LogoutView(View):
         except Exception as e:
             return JsonResponse({"success": False, "message": str(e)}, status=500)
 
+def get_user_from_session(request):
+    """Helper method to get user from session"""
+    session_key = request.COOKIES.get("sessionid")
+    if not session_key:
+        return None
+
+    try:
+        session = Session.objects.get(session_key=session_key)
+        session_data = session.get_decoded()
+        user_id = session_data.get("user_id")
+        if user_id:
+            return User.objects.get(id=user_id, is_active=True)
+    except (Session.DoesNotExist, User.DoesNotExist):
+        pass
+    return None
 
 @method_decorator(csrf_exempt, name="dispatch")
 class ProfileView(View):
-    def get_user_from_session(self, request):
-        """Helper method to get user from session"""
-        session_key = request.COOKIES.get("sessionid")
-        if not session_key:
-            return None
-
-        try:
-            session = Session.objects.get(session_key=session_key)
-            session_data = session.get_decoded()
-            user_id = session_data.get("user_id")
-            if user_id:
-                return User.objects.get(id=user_id, is_active=True)
-        except (Session.DoesNotExist, User.DoesNotExist):
-            pass
-        return None
 
     def get(self, request):
         """Get current user profile"""
-        user = self.get_user_from_session(request)
+        user = get_user_from_session(request)
         if not user:
             return JsonResponse(
                 {"success": False, "message": "Not authenticated"}, status=401
@@ -197,7 +197,7 @@ class ProfileView(View):
 
     def put(self, request):
         """Update user profile"""
-        user = self.get_user_from_session(request)
+        user = get_user_from_session(request)
         if not user:
             return JsonResponse(
                 {"success": False, "message": "Not authenticated"}, status=401

@@ -4,26 +4,9 @@ from rest_framework import status
 from django.contrib.sessions.models import Session
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-import re
 from .llm_interface import call_model_with_json_response
 from .models import KeywordExplanationPair, Passage, User
-
-
-def get_user_from_session(request):
-    """Helper function to get user from session"""
-    session_key = request.COOKIES.get("sessionid")
-    if not session_key:
-        return None
-
-    try:
-        session = Session.objects.get(session_key=session_key)
-        session_data = session.get_decoded()
-        user_id = session_data.get("user_id")
-        if user_id:
-            return User.objects.get(id=user_id, is_active=True)
-    except (Session.DoesNotExist, User.DoesNotExist):
-        pass
-    return None
+from .profile import get_user_from_session
 
 
 @method_decorator(csrf_exempt, name="dispatch")
