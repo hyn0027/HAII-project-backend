@@ -239,3 +239,77 @@ class AddKnownKeywordView(APIView):
             {"keywords_with_explanations": passage.split_result_with_explanations},
             status=status.HTTP_200_OK,
         )
+
+
+class SavePassageView(KeywordView):
+    def post(self, request):
+        # Check authentication
+        user = get_user_from_session(request)
+        if not user:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        keywords_with_explanations = request.data.get("keywords_with_explanations", [])
+
+        passage = Passage.from_split_result_with_explanations(
+            keywords_with_explanations
+        )
+        passage.user = user
+        passage.save()
+
+        return Response(
+            {"message": "Passage saved successfully"}, status=status.HTTP_200_OK
+        )
+
+
+class GetSavedPassagesView(KeywordView):
+    def get(self, request):
+        # Check authentication
+        user = get_user_from_session(request)
+        if not user:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        passages = Passage.objects.filter(user=user).order_by("-created_at")
+        passages_data = []
+        for passage in passages:
+            passages_data.append(
+                {
+                    "id": passage.id,
+                    "split_result": passage.split_result,
+                    "split_result_with_explanations": passage.split_result_with_explanations,
+                }
+            )
+
+        return Response({"passages": passages_data}, status=status.HTTP_200_OK)
+
+class DeleteSavedPassageView(KeywordView):
+    def post(self, request):
+        # Check authentication
+        user = get_user_from_session(request)
+        if not user:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        passage_id = request.data.get("passage_id", "")
+        if not passage_id:
+            return Response(
+                {"error": "No passage_id provided"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            passage = Passage.objects.get(id=passage_id, user=user)
+            passage.delete()
+            return Response(
+                {"message": "Passage deleted successfully"}, status=status.HTTP_200_OK
+            )
+        except Passage.DoesNotExist:
+            return Response(
+                {"error": "Passage not found"}, status=status.HTTP_404_NOT_FOUND
+            )

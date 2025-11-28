@@ -66,6 +66,7 @@ class Passage(models.Model):
     split_result = models.JSONField(null=True, blank=True)
     split_result_with_explanations = models.JSONField(null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     @classmethod
     def from_split_result(cls, split_result) -> "Passage":

@@ -17,7 +17,14 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
-from api.keyword_views import InitialKeywordView, NewKeywordView, AddKnownKeywordView
+from api.keyword_views import (
+    InitialKeywordView,
+    NewKeywordView,
+    AddKnownKeywordView,
+    SavePassageView,
+    GetSavedPassagesView,
+    DeleteSavedPassageView,
+)
 from api.profile import SignupView, LoginView, LogoutView, ProfileView
 
 urlpatterns = [
@@ -32,5 +39,16 @@ urlpatterns = [
         "api/add_known_word_to_passage/",
         AddKnownKeywordView.as_view(),
         name="add_known_word_to_passage",
+    ),
+    path("api/save_passage/", SavePassageView.as_view(), name="save_passage"),
+    path(
+        "api/get_all_saved_passages/",
+        GetSavedPassagesView.as_view(),
+        name="get_all_saved_passages",
+    ),
+    path(
+        "api/delete_saved_passage/",
+        DeleteSavedPassageView.as_view(),
+        name="delete_saved_passage",
     ),
 ]
