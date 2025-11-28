@@ -24,6 +24,7 @@ from api.keyword_views import (
     SavePassageView,
     GetSavedPassagesView,
     DeleteSavedPassageView,
+    GetAIExplanationView,
 )
 from api.profile import SignupView, LoginView, LogoutView, ProfileView
 
@@ -50,5 +51,10 @@ urlpatterns = [
         "api/delete_saved_passage/",
         DeleteSavedPassageView.as_view(),
         name="delete_saved_passage",
+    ),
+    path(
+        "api/get_ai_explanation/",
+        GetAIExplanationView.as_view(),
+        name="get_ai_explanation",
     ),
 ]

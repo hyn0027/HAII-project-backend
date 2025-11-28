@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .llm_interface import call_model_with_json_response
 from .models import KeywordExplanationPair, Passage, User
 from .profile import get_user_from_session
+import random
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -82,33 +83,47 @@ class InitialKeywordView(KeywordView):
 
         word_set = passage.get_word_set_from_split_result()
 
+        user_bio = user.bio if user.bio else "General audience"
+        user_known_words = user.known_keywords if user.known_keywords else []
+        sample_known_words = ", ".join(
+            random.sample(user_known_words, min(20, len(user_known_words)))
+        )
+
         system_prompt = (
             "You are an word explanation assistant targeting a general audience. "
             "You will be provided with a list of words or phrases from a technical article. "
-            "Your task is to assess if each word or phrase may be difficult for a general audience who does not have a technical background to understand. \n\n"
-            "A word or phrase should be considered difficult if it includes technical jargon, domain-specific terminology, abbreviations, or uncommon words.\n\n"
+            "Your task is to assess if each word or phrase may be difficult for an user to understand. \n\n"
+            "A word or phrase should be considered difficult if it includes technical jargon, domain-specific terminology, abbreviations, or uncommon words that is not in the user's field.\n\n"
+            f"To help you better understand the user's need, here is some information about the user:\n"
+            f"User bio: {user_bio}\n\n"
+            f"Terminologies the user is ALREADY familiar with: {sample_known_words}\n\n"
+            "Make reasonable assumptions about the user's knowledge based on the provided bio and known terminologies. "
+            "Do not consider a word or phrase as difficult if it is likely to be understood by the user given their background and known terminologies.\n\n"
             "For each identified difficult term, provide a brief and clear explanation suitable for a general audience. "
             "Ensure explanations are concise, accurate, and avoid using further technical jargon.\n\n"
             "Format the output as a JSON objects. Each object should contain two fields: "
             "'word' (the identified term) and 'explanation' (its definition or meaning in simple language).\n\n"
+            "The following example illustrates the input-output format, not the content:\n\n"
             "Example input:\n"
             '"""\n'
+            "Neurology\n"
+            "abstract\n"
+            "Portfolio management\n"
+            "is\n"
             "Segment trees\n"
-            "useful\n"
-            "It\n"
-            "data structure\n"
-            "a\n"
-            "dynamic\n"
-            "easy\n"
-            "interval queries\n"
+            "They\n"
+            "are\n"
+            "Human Rights\n"
+            "complex\n"
+            "phenomenon\n"
             '"""\n\n'
             "Expected output:\n"
             "{\n"
             '  "result": [\n'
+            '    {"word": "Neurology", "explanation": "Neurology is a branch of medicine that deals with the study and treatment of disorders of the nervous system, including the brain, spinal cord, and nerves."},\n'
+            '    {"word": "Portfolio management", "explanation": "Portfolio management is the process of selecting, overseeing, and optimizing a collection of investments to meet specific financial goals while managing risk."},\n'
             '    {"word": "Segment trees", "explanation": "A segment tree is a binary tree data structure used for storing information about intervals or segments. It allows efficient querying and updating of interval data."},\n'
-            '    {"word": "data structure", "explanation": "A data structure is a way of organizing and storing data in a computer so that it can be accessed and modified efficiently."},\n'
-            '    {"word": "dynamic", "explanation": "In computer science, dynamic refers to something that can change size or structure while a program is running."},\n'
-            '    {"word": "interval queries", "explanation": "An interval query is a request for information about a specific range of values, often used in databases or data structures."}\n'
+            '    {"word": "Human Rights", "explanation": "Human Rights are the basic rights and freedoms that belong to every person in the world, regardless of nationality, ethnicity, gender, religion, or any other status. They include rights such as freedom of speech, equality, and the right to education."},\n'
             "  ]\n"
             "}\n"
             '"""'
@@ -135,6 +150,29 @@ class InitialKeywordView(KeywordView):
             {"keywords_with_explanations": passage.split_result_with_explanations},
             status=status.HTTP_200_OK,
         )
+
+
+class GetAIExplanationView(APIView):
+    SAMPLE_PASSAGE = (
+        "Computer Science: Segment trees are a data structure useful for dynamic interval queries.\n"
+        "Medicine: Hypertension, or high blood pressure, is a common condition that increases the risk of heart disease and stroke.\n"
+        "Mathematics: A prime number is a natural number greater than 1 that cannot be formed by multiplying two smaller natural numbers.\n"
+        "Biology: Photosynthesis is the process by which green plants and some other organisms use sunlight to synthesize foods with the help of chlorophyll.\n"
+        "Physics: Quantum mechanics is a fundamental theory in physics that provides a description of the physical properties of nature at the scale of atoms and subatomic particles.\n"
+        "Economics: Inflation is the rate at which the general level of prices for goods and services is rising, leading to a decrease in purchasing power.\n"
+        "History: The Renaissance was a period in European history marking the transition from the Middle Ages to modernity, characterized by a revival of art, culture, and intellectual pursuit.\n"
+        "Art: Cubism is an early-20th-century avant-garde art movement that revolutionized European painting and sculpture by introducing abstracted forms and multiple perspectives.\n"
+        "Chemistry: An acid is a molecule or ion capable of donating a proton (hydrogen ion) or forming a covalent bond with an electron pair.\n"
+        "Geography: A delta is a landform that forms at the mouth of a river, where the river splits into several outlets to enter a larger body of water, often creating a triangular shape.\n"
+        "Literature: Metaphor is a figure of speech that involves an implicit comparison between two unlike things, suggesting they are alike in a certain way."
+    )
+
+    def get(self, request):
+        request.data["passage"] = self.SAMPLE_PASSAGE
+
+        response = InitialKeywordView().post(request)
+        response.data["sample_passage"] = self.SAMPLE_PASSAGE
+        return Response(response.data, status=response.status_code)
 
 
 class NewKeywordView(KeywordView):
@@ -241,7 +279,7 @@ class AddKnownKeywordView(APIView):
         )
 
 
-class SavePassageView(KeywordView):
+class SavePassageView(APIView):
     def post(self, request):
         # Check authentication
         user = get_user_from_session(request)
@@ -264,7 +302,7 @@ class SavePassageView(KeywordView):
         )
 
 
-class GetSavedPassagesView(KeywordView):
+class GetSavedPassagesView(APIView):
     def get(self, request):
         # Check authentication
         user = get_user_from_session(request)
@@ -287,7 +325,8 @@ class GetSavedPassagesView(KeywordView):
 
         return Response({"passages": passages_data}, status=status.HTTP_200_OK)
 
-class DeleteSavedPassageView(KeywordView):
+
+class DeleteSavedPassageView(APIView):
     def post(self, request):
         # Check authentication
         user = get_user_from_session(request)
