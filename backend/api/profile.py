@@ -2,8 +2,6 @@ from django.http import JsonResponse
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from django.contrib.sessions.models import Session
-from django.contrib.sessions.backends.db import SessionStore
 import json
 from .models import User
 
@@ -48,13 +46,12 @@ class SignupView(View):
             user.set_password(password)
             user.save()
 
-            # Create session
-            session = SessionStore()
-            session["user_id"] = user.id
-            session["username"] = user.username
-            session.save()
+            # Create session using Django's built-in session framework
+            request.session["user_id"] = user.id
+            request.session["username"] = user.username
+            request.session.save()
             print(
-                f"Debug: Created session for user {user.username} with key: {session.session_key}"
+                f"Debug: Created session for user {user.username} with key: {request.session.session_key}"
             )  # Debug log
 
             response = JsonResponse(
@@ -71,10 +68,10 @@ class SignupView(View):
             )
             response.set_cookie(
                 "sessionid",
-                session.session_key,
+                request.session.session_key,
                 httponly=False,
-                samesite="None",
-                secure=True,
+                samesite="Lax",
+                secure=False,
                 max_age=1209600,
             )
             return response
@@ -115,11 +112,10 @@ class LoginView(View):
                     status=401,
                 )
 
-            # Create session
-            session = SessionStore()
-            session["user_id"] = user.id
-            session["username"] = user.username
-            session.save()
+            # Create session using Django's built-in session framework
+            request.session["user_id"] = user.id
+            request.session["username"] = user.username
+            request.session.save()
 
             response = JsonResponse(
                 {
@@ -135,10 +131,10 @@ class LoginView(View):
             )
             response.set_cookie(
                 "sessionid",
-                session.session_key,
+                request.session.session_key,
                 httponly=False,
-                samesite="None",
-                secure=True,
+                samesite="Lax",
+                secure=False,
                 max_age=1209600,
             )
             return response
@@ -155,16 +151,13 @@ class LoginView(View):
 class LogoutView(View):
     def post(self, request):
         try:
-            session_key = request.COOKIES.get("sessionid")
-            if session_key:
-                try:
-                    session = Session.objects.get(session_key=session_key)
-                    session.delete()
-                except Session.DoesNotExist:
-                    pass
+            # Clear the session using Django's built-in method
+            if hasattr(request, "session"):
+                request.session.flush()  # This deletes the session and session key
+                print(f"Debug: Cleared session for logout")  # Debug log
 
             response = JsonResponse({"success": True, "message": "Logout successful"})
-            response.delete_cookie("sessionid")
+            response.delete_cookie("sessionid", samesite="Lax", secure=False)
             return response
 
         except Exception as e:
@@ -173,27 +166,21 @@ class LogoutView(View):
 
 def get_user_from_session(request):
     """Helper method to get user from session"""
-    session_key = request.COOKIES.get("sessionid")
-    print(f"Debug: Session key from cookies: {session_key}")  # Debug log
-    print(f"Debug: All cookies: {request.COOKIES}")  # Debug log
 
-    if not session_key:
-        print("Debug: No session key found in cookies")  # Debug log
+    # Use Django's built-in session framework
+    user_id = request.session.get("user_id")
+
+    if not user_id:
+        print("Debug: No user_id found in session")  # Debug log
         return None
 
     try:
-        session = Session.objects.get(session_key=session_key)
-        session_data = session.get_decoded()
-        user_id = session_data.get("user_id")
-        print(f"Debug: Found session data: {session_data}")  # Debug log
-        if user_id:
-            user = User.objects.get(id=user_id, is_active=True)
-            print(f"Debug: Found user: {user.username}")  # Debug log
-            return user
-    except (Session.DoesNotExist, User.DoesNotExist) as e:
-        print(f"Debug: Session/User lookup failed: {e}")  # Debug log
-        pass
-    return None
+        user = User.objects.get(id=user_id, is_active=True)
+        print(f"Debug: Found user: {user.username}")  # Debug log
+        return user
+    except User.DoesNotExist as e:
+        print(f"Debug: User lookup failed: {e}")  # Debug log
+        return None
 
 
 @method_decorator(csrf_exempt, name="dispatch")
