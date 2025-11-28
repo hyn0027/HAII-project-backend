@@ -26,7 +26,13 @@ from api.keyword_views import (
     DeleteSavedPassageView,
     GetAIExplanationView,
 )
-from api.profile import SignupView, LoginView, LogoutView, ProfileView
+from api.profile import (
+    SignupView,
+    LoginView,
+    LogoutView,
+    ProfileView,
+    ClearUserKeywordHistoryView,
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -56,5 +62,10 @@ urlpatterns = [
         "api/get_ai_explanation/",
         GetAIExplanationView.as_view(),
         name="get_ai_explanation",
+    ),
+    path(
+        "api/clear_user_keyword_history/",
+        ClearUserKeywordHistoryView.as_view(),
+        name="clear_user_keyword_history",
     ),
 ]

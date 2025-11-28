@@ -3,7 +3,7 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import json
-from .models import User
+from .models import User, KeywordExplanationPair
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -206,6 +206,14 @@ class ProfileView(View):
                     "email": user.email,
                     "bio": user.bio,
                     "known_keywords": user.known_keywords,
+                    "all_keyword_explanation_pairs": [
+                        {
+                            "id": pair.id,
+                            "keyword": pair.keyword,
+                            "explanation": pair.explanation,
+                        }
+                        for pair in user.get_all_keyword_explanation_pairs()
+                    ],
                 },
             }
         )
@@ -284,6 +292,46 @@ class ProfileView(View):
                 }
             )
 
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {"success": False, "message": "Invalid JSON data"}, status=400
+            )
+        except Exception as e:
+            return JsonResponse({"success": False, "message": str(e)}, status=500)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class ClearUserKeywordHistoryView(View):
+    def post(self, request):
+        """Clear KeywordExplanationPair history given by the user"""
+        user = get_user_from_session(request)
+        if not user:
+            return JsonResponse(
+                {"success": False, "message": "Not authenticated"}, status=401
+            )
+        try:
+            if json.loads(request.body).get("clear_all", False):
+                KeywordExplanationPair.objects.filter(user=user).delete()
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "message": "All Keyword history cleared successfully",
+                    }
+                )
+            else:
+                requested_keywords = json.loads(request.body).get("keywords", [])
+                if not isinstance(requested_keywords, list):
+                    return JsonResponse(
+                        {"success": False, "message": "keywords must be a list"},
+                        status=400,
+                    )
+                for word in requested_keywords:
+                    KeywordExplanationPair.objects.filter(
+                        user=user, keyword__iexact=word
+                    ).delete()
+                return JsonResponse(
+                    {"success": True, "message": "Keyword history cleared successfully"}
+                )
         except json.JSONDecodeError:
             return JsonResponse(
                 {"success": False, "message": "Invalid JSON data"}, status=400

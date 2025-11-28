@@ -17,6 +17,9 @@ class KeywordView(APIView):
             "You are an article analysis assistant. "
             "You will be provided with a passage from an article. "
             "Your task is split the passage into a list of semantic words or phrases. "
+            "You should separate out punctuation marks, articles such as a/an/the, pronouns such as he/she/it/they, and conjunctions such as and/but/or, as individual items in the list. "
+            "For other words or phrases, you should group them together based on their semantic meaning. "
+            "If there is a line break, you should represent it as a '\\n' item in the list.\n\n"
             "Format the output as a JSON object.\n\n"
             "Example input:\n"
             '"""\n'
@@ -86,44 +89,46 @@ class InitialKeywordView(KeywordView):
         user_bio = user.bio if user.bio else "General audience"
         user_known_words = user.known_keywords if user.known_keywords else []
         sample_known_words = ", ".join(
-            random.sample(user_known_words, min(20, len(user_known_words)))
+            random.sample(user_known_words, min(200, len(user_known_words)))
         )
 
         system_prompt = (
-            "You are an word explanation assistant targeting a general audience. "
-            "You will be provided with a list of words or phrases from a technical article. "
-            "Your task is to assess if each word or phrase may be difficult for an user to understand. \n\n"
-            "A word or phrase should be considered difficult if it includes technical jargon, domain-specific terminology, abbreviations, or uncommon words that is not in the user's field.\n\n"
+            "You are an word explanation assistant. "
+            "You will be provided with a list of words or phrases from an article. "
+            "Your task is to assess if each word or phrase is difficult for an user to understand. "
+            "A word or phrase should be considered difficult for the user to understand if it includes technical jargon, domain-specific terminology, abbreviations, or uncommon words that is not in the user's field.\n\n"
             f"To help you better understand the user's need, here is some information about the user:\n"
-            f"User bio: {user_bio}\n\n"
-            f"Terminologies the user is ALREADY familiar with: {sample_known_words}\n\n"
-            "Make reasonable assumptions about the user's knowledge based on the provided bio and known terminologies. "
+            "User bio:\n"
+            '"""'
+            f"{user_bio}\n"
+            '"""\n'
+            "Terminologies the user is ALREADY familiar with: "
+            '"""'
+            f"{sample_known_words}\n"
+            '"""\n\n'
+            "You should make reasonable assumptions about the user's background and knowledge based on the provided bio and the terminologies they are already familiar with. "
             "Do not consider a word or phrase as difficult if it is likely to be understood by the user given their background and known terminologies.\n\n"
-            "For each identified difficult term, provide a brief and clear explanation suitable for a general audience. "
+            "For each identified term that the user may not understand, provide a brief and clear explanation suitable for a general audience. "
             "Ensure explanations are concise, accurate, and avoid using further technical jargon.\n\n"
-            "Format the output as a JSON objects. Each object should contain two fields: "
-            "'word' (the identified term) and 'explanation' (its definition or meaning in simple language).\n\n"
-            "The following example illustrates the input-output format, not the content:\n\n"
+            "Format the output as a JSON objects. Each object should contain 3 fields: "
+            "'word' (the identified term), 'explanation' (its definition or meaning in simple language), and 'reason' (a brief explanation of why this term is difficult for the user to understand).\n\n"
+            "The following example illustrates the input-output format:\n\n"
             "Example input:\n"
             '"""\n'
-            "Neurology\n"
-            "abstract\n"
-            "Portfolio management\n"
-            "is\n"
-            "Segment trees\n"
-            "They\n"
-            "are\n"
-            "Human Rights\n"
-            "complex\n"
-            "phenomenon\n"
+            "Keyword1\n"
+            "Keyword2\n"
+            "Keyword3\n"
+            "Keyword4\n"
+            "Keyword5\n"
+            "Keyword6\n"
+            "Keyword7\n"
             '"""\n\n'
             "Expected output:\n"
             "{\n"
             '  "result": [\n'
-            '    {"word": "Neurology", "explanation": "Neurology is a branch of medicine that deals with the study and treatment of disorders of the nervous system, including the brain, spinal cord, and nerves."},\n'
-            '    {"word": "Portfolio management", "explanation": "Portfolio management is the process of selecting, overseeing, and optimizing a collection of investments to meet specific financial goals while managing risk."},\n'
-            '    {"word": "Segment trees", "explanation": "A segment tree is a binary tree data structure used for storing information about intervals or segments. It allows efficient querying and updating of interval data."},\n'
-            '    {"word": "Human Rights", "explanation": "Human Rights are the basic rights and freedoms that belong to every person in the world, regardless of nationality, ethnicity, gender, religion, or any other status. They include rights such as freedom of speech, equality, and the right to education."},\n'
+            '    {"word": "Keyword1", "explanation": "Explanation for Keyword1.", "reason": "Reason why Keyword1 is difficult for this particilar user."},\n'
+            '    {"word": "Keyword3", "explanation": "Explanation for Keyword3.", "reason": "Reason why Keyword3 is difficult for this particilar user."},\n'
+            '    {"word": "Keyword7", "explanation": "Explanation for Keyword7.", "reason": "Reason why Keyword7 is difficult for this particilar user."},\n'
             "  ]\n"
             "}\n"
             '"""'
@@ -143,8 +148,6 @@ class InitialKeywordView(KeywordView):
             pair.save()
 
         passage.apply_explanations(user.get_all_keyword_explanation_pairs())
-
-        # passage.save()
 
         return Response(
             {"keywords_with_explanations": passage.split_result_with_explanations},
