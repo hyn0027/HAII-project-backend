@@ -78,6 +78,8 @@ class InitialKeywordView(KeywordView):
             )
 
         passage = self._split_passage(passage)
+        passage.user = user
+
         word_set = passage.get_word_set_from_split_result()
 
         system_prompt = (
@@ -123,11 +125,10 @@ class InitialKeywordView(KeywordView):
 
         for pair in keyword_explanation_pairs:
             pair.user = user
-            # pair.save()
+            pair.save()
 
-        passage.apply_explanations(keyword_explanation_pairs)
+        passage.apply_explanations(user.get_all_keyword_explanation_pairs())
 
-        passage.user = user
         # passage.save()
 
         return Response(
@@ -158,6 +159,7 @@ class NewKeywordView(KeywordView):
         passage = Passage.from_split_result_with_explanations(
             keywords_with_explanations
         )
+        passage.user = user
 
         system_prompt = (
             "You are an word explanation assistant targeting a general audience. "
@@ -190,12 +192,14 @@ class NewKeywordView(KeywordView):
                 user=user,
             )
         ]
+        
+        user.delete_known_word(requested_word)
 
         # Save the new keyword explanation
-        # for pair in keyword_explanation_pairs:
-        #     pair.save()
+        for pair in keyword_explanation_pairs:
+            pair.save()
 
-        passage.apply_explanations(keyword_explanation_pairs)
+        passage.apply_explanations(user.get_all_keyword_explanation_pairs())
         # passage.save()
 
         return Response(

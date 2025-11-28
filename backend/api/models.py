@@ -21,6 +21,22 @@ class User(models.Model):
     def __str__(self):
         return self.username
 
+    def get_all_keyword_explanation_pairs(self) -> Iterable["KeywordExplanationPair"]:
+        return KeywordExplanationPair.objects.filter(user=self)
+    
+    def delete_known_word(self, word: str):
+        word_lower = word.lower().strip()
+        self.known_keywords = [
+            kw for kw in self.known_keywords if kw.lower().strip() != word_lower
+        ]
+        self.save()
+    
+    def add_known_word(self, word: str):
+        word_lower = word.lower().strip()
+        if word_lower not in (kw.lower().strip() for kw in self.known_keywords):
+            self.known_keywords.append(word)
+            self.save()
+
 
 class KeywordExplanationPair(models.Model):
     keyword = models.CharField(max_length=100)
@@ -81,9 +97,13 @@ class Passage(models.Model):
         if not self.split_result:
             return
 
+        known_words = self.user.known_keywords if self.user else []
+        known_word_set = set(word.lower().strip() for word in known_words)
         for item in explanations:
             keyword = item.keyword
             explanation = item.explanation
+            if keyword.lower().strip() in known_word_set:
+                continue
             for paragraph in self.split_result_with_explanations:
                 for word_obj in paragraph:
                     if word_obj["word"].lower().strip() == keyword.lower().strip():
