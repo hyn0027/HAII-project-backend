@@ -41,6 +41,7 @@ class User(models.Model):
 class KeywordExplanationPair(models.Model):
     keyword = models.CharField(max_length=100)
     explanation = models.TextField()
+    reason = models.TextField(null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
@@ -55,9 +56,12 @@ class KeywordExplanationPair(models.Model):
         for item in model_res:
             keyword = item.get("word", "").strip()
             explanation = item.get("explanation", "").strip()
+            reason = item.get("reason", "").strip()
             if keyword != "" and explanation != "":
                 res.append(
-                    KeywordExplanationPair(keyword=keyword, explanation=explanation)
+                    KeywordExplanationPair(
+                        keyword=keyword, explanation=explanation, reason=reason
+                    )
                 )
         return res
 

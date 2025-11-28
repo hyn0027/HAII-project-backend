@@ -211,6 +211,7 @@ class ProfileView(View):
                             "id": pair.id,
                             "keyword": pair.keyword,
                             "explanation": pair.explanation,
+                            "reason": pair.reason,
                         }
                         for pair in user.get_all_keyword_explanation_pairs()
                     ],
