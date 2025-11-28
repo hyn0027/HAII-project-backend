@@ -192,7 +192,7 @@ class NewKeywordView(KeywordView):
                 user=user,
             )
         ]
-        
+
         user.delete_known_word(requested_word)
 
         # Save the new keyword explanation
@@ -201,6 +201,39 @@ class NewKeywordView(KeywordView):
 
         passage.apply_explanations(user.get_all_keyword_explanation_pairs())
         # passage.save()
+
+        return Response(
+            {"keywords_with_explanations": passage.split_result_with_explanations},
+            status=status.HTTP_200_OK,
+        )
+
+
+class AddKnownKeywordView(APIView):
+    def post(self, request):
+        # Check authentication
+        user = get_user_from_session(request)
+        if not user:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        word = request.data.get("word", "")
+        if not word:
+            return Response(
+                {"error": "No word provided"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.add_known_word(word)
+
+        keywords_with_explanations = request.data.get("keywords_with_explanations", [])
+
+        passage = Passage.from_split_result_with_explanations(
+            keywords_with_explanations
+        )
+        passage.user = user
+
+        passage.apply_explanations(user.get_all_keyword_explanation_pairs())
 
         return Response(
             {"keywords_with_explanations": passage.split_result_with_explanations},

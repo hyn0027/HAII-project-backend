@@ -17,7 +17,7 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
-from api.keyword_views import InitialKeywordView, NewKeywordView
+from api.keyword_views import InitialKeywordView, NewKeywordView, AddKnownKeywordView
 from api.profile import SignupView, LoginView, LogoutView, ProfileView
 
 urlpatterns = [
@@ -28,4 +28,9 @@ urlpatterns = [
     path("api/login/", LoginView.as_view(), name="login"),
     path("api/logout/", LogoutView.as_view(), name="logout"),
     path("api/profile/", ProfileView.as_view(), name="profile"),
+    path(
+        "api/add_known_word_to_passage/",
+        AddKnownKeywordView.as_view(),
+        name="add_known_word_to_passage",
+    ),
 ]
