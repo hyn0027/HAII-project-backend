@@ -1,11 +1,32 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.contrib.sessions.models import Session
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 import re
 from .llm_interface import call_model_with_json_response
-from .models import KeywordExplanationPair, Passage
+from .models import KeywordExplanationPair, Passage, User
 
 
+def get_user_from_session(request):
+    """Helper function to get user from session"""
+    session_key = request.COOKIES.get("sessionid")
+    if not session_key:
+        return None
+
+    try:
+        session = Session.objects.get(session_key=session_key)
+        session_data = session.get_decoded()
+        user_id = session_data.get("user_id")
+        if user_id:
+            return User.objects.get(id=user_id, is_active=True)
+    except (Session.DoesNotExist, User.DoesNotExist):
+        pass
+    return None
+
+
+@method_decorator(csrf_exempt, name="dispatch")
 class KeywordView(APIView):
     def _split_passage(self, doc) -> Passage:
         system_prompt = (
@@ -59,6 +80,14 @@ class KeywordView(APIView):
 
 class InitialKeywordView(KeywordView):
     def post(self, request):
+        # Check authentication
+        user = get_user_from_session(request)
+        if not user:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
         passage = request.data.get("passage", "")
         if not passage:
             return Response(
@@ -108,7 +137,16 @@ class InitialKeywordView(KeywordView):
                 model_res.get("result", [])
             )
         )
+
+        for pair in keyword_explanation_pairs:
+            pair.user = user
+            # pair.save()
+
         passage.apply_explanations(keyword_explanation_pairs)
+
+        passage.user = user
+        # passage.save()
+
         return Response(
             {"keywords_with_explanations": passage.split_result_with_explanations},
             status=status.HTTP_200_OK,
@@ -117,6 +155,14 @@ class InitialKeywordView(KeywordView):
 
 class NewKeywordView(KeywordView):
     def post(self, request):
+        # Check authentication
+        user = get_user_from_session(request)
+        if not user:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
         keywords_with_explanations = request.data.get("keywords_with_explanations", [])
         requested_word = request.data.get("requested_word", "")
 
@@ -152,13 +198,23 @@ class NewKeywordView(KeywordView):
         model_res = call_model_with_json_response(
             system_prompt=system_prompt, user_prompt=requested_word
         )
+
+        # Create and save keyword explanation with user association
         keyword_explanation_pairs = [
             KeywordExplanationPair(
                 keyword=requested_word,
                 explanation=model_res.get("result", [])[0].get("explanation", ""),
+                user=user,
             )
         ]
+
+        # Save the new keyword explanation
+        # for pair in keyword_explanation_pairs:
+        #     pair.save()
+
         passage.apply_explanations(keyword_explanation_pairs)
+        # passage.save()
+
         return Response(
             {"keywords_with_explanations": passage.split_result_with_explanations},
             status=status.HTTP_200_OK,
