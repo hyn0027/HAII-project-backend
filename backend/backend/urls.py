@@ -17,10 +17,15 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
-from api.views import KeywordView, NewKeywordView
+from api.keyword_views import InitialKeywordView, NewKeywordView
+from api.profile import SignupView, LoginView, LogoutView, ProfileView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/get_keywords/", KeywordView.as_view(), name="get_keywords"),
+    path("api/get_keywords/", InitialKeywordView.as_view(), name="get_keywords"),
     path("api/new_keyword/", NewKeywordView.as_view(), name="new_keywords"),
+    path("api/signup/", SignupView.as_view(), name="signup"),
+    path("api/login/", LoginView.as_view(), name="login"),
+    path("api/logout/", LogoutView.as_view(), name="logout"),
+    path("api/profile/", ProfileView.as_view(), name="profile"),
 ]

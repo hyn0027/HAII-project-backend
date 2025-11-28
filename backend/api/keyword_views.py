@@ -3,10 +3,11 @@ from rest_framework.response import Response
 from rest_framework import status
 import re
 from .llm_interface import call_model_with_json_response
+from .models import KeywordExplanationPair, Passage
 
 
 class KeywordView(APIView):
-    def _split_passage(self, doc):
+    def _split_passage(self, doc) -> Passage:
         system_prompt = (
             "You are an article analysis assistant. "
             "You will be provided with a passage from an article. "
@@ -47,25 +48,16 @@ class KeywordView(APIView):
         )
         model_res = model_res.get("result", [])
 
-        # split by '\n'
         res = [[]]
         for word in model_res:
             if word == "\n":
                 res.append([])
             else:
-                res[-1].append({"word": word})
-        return res
+                res[-1].append(word)
+        return Passage.from_split_result(res)
 
-    def _get_word_set_from_split_result(self, split_res):
-        word_set = set()
-        for paragraph in split_res:
-            for word_obj in paragraph:
-                if word_obj["word"].strip() != "" and not re.match(
-                    r'^[\.,\?\:"\(\);\!\[\]\{\}<>]+$', word_obj["word"]
-                ):
-                    word_set.add(word_obj["word"].lower().strip())
-        return word_set
 
+class InitialKeywordView(KeywordView):
     def post(self, request):
         passage = request.data.get("passage", "")
         if not passage:
@@ -73,10 +65,8 @@ class KeywordView(APIView):
                 {"error": "No passage provided"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        split_res = self._split_passage(passage)
-        word_set = self._get_word_set_from_split_result(split_res)
-        print("Split result:", split_res)
-        print("Word set:", word_set)
+        passage = self._split_passage(passage)
+        word_set = passage.get_word_set_from_split_result()
 
         system_prompt = (
             "You are an word explanation assistant targeting a general audience. "
@@ -113,22 +103,32 @@ class KeywordView(APIView):
         model_res = call_model_with_json_response(
             system_prompt=system_prompt, user_prompt="\n".join(word_set)
         )
-        for item in model_res.get("result", []):
-            word = item["word"]
-            explanation = item["explanation"]
-            for paragraph in split_res:
-                for word_obj in paragraph:
-                    if word_obj["word"].lower().strip() == word.lower().strip():
-                        word_obj["explanation"] = explanation
+        keyword_explanation_pairs = (
+            KeywordExplanationPair.get_keyword_explanation_pair_list_from_model_res(
+                model_res.get("result", [])
+            )
+        )
+        passage.apply_explanations(keyword_explanation_pairs)
         return Response(
-            {"keywords_with_explanations": split_res}, status=status.HTTP_200_OK
+            {"keywords_with_explanations": passage.split_result_with_explanations},
+            status=status.HTTP_200_OK,
         )
 
 
-class NewKeywordView(APIView):
+class NewKeywordView(KeywordView):
     def post(self, request):
         keywords_with_explanations = request.data.get("keywords_with_explanations", [])
         requested_word = request.data.get("requested_word", "")
+
+        if not requested_word:
+            return Response(
+                {"error": "No requested_word provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        passage = Passage.from_split_result_with_explanations(
+            keywords_with_explanations
+        )
 
         system_prompt = (
             "You are an word explanation assistant targeting a general audience. "
@@ -152,14 +152,14 @@ class NewKeywordView(APIView):
         model_res = call_model_with_json_response(
             system_prompt=system_prompt, user_prompt=requested_word
         )
-        for item in model_res.get("result", []):
-            word = item["word"]
-            explanation = item["explanation"]
-            for paragraph in keywords_with_explanations:
-                for word_obj in paragraph:
-                    if word_obj["word"].lower().strip() == word.lower().strip():
-                        word_obj["explanation"] = explanation
+        keyword_explanation_pairs = [
+            KeywordExplanationPair(
+                keyword=requested_word,
+                explanation=model_res.get("result", [])[0].get("explanation", ""),
+            )
+        ]
+        passage.apply_explanations(keyword_explanation_pairs)
         return Response(
-            {"keywords_with_explanations": keywords_with_explanations},
+            {"keywords_with_explanations": passage.split_result_with_explanations},
             status=status.HTTP_200_OK,
         )
