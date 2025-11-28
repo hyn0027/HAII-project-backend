@@ -10,6 +10,7 @@ class User(models.Model):
     password_hash = models.CharField(max_length=128)
     bio = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
+    known_keywords = models.JSONField(default=list, blank=True)
 
     def set_password(self, raw_password):
         self.password_hash = make_password(raw_password)

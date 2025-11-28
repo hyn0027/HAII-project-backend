@@ -42,6 +42,7 @@ class SignupView(View):
                 username=username,
                 email=email,
                 bio=bio,
+                known_keywords=[],
             )
             user.set_password(password)
             user.save()
@@ -63,6 +64,7 @@ class SignupView(View):
                         "username": user.username,
                         "email": user.email,
                         "bio": user.bio,
+                        "known_keywords": user.known_keywords,
                     },
                 }
             )
@@ -126,6 +128,7 @@ class LoginView(View):
                         "username": user.username,
                         "email": user.email,
                         "bio": user.bio,
+                        "known_keywords": user.known_keywords,
                     },
                 }
             )
@@ -202,6 +205,7 @@ class ProfileView(View):
                     "username": user.username,
                     "email": user.email,
                     "bio": user.bio,
+                    "known_keywords": user.known_keywords,
                 },
             }
         )
@@ -230,6 +234,31 @@ class ProfileView(View):
             if "bio" in data:
                 user.bio = data["bio"]
 
+            if "known_keywords" in data:
+                known_keywords = data["known_keywords"]
+                if not isinstance(known_keywords, list):
+                    return JsonResponse(
+                        {
+                            "success": False,
+                            "message": "known_keywords must be a list",
+                        },
+                        status=400,
+                    )
+                processed_keywords = []
+                for kw in known_keywords:
+                    if not isinstance(kw, str):
+                        return JsonResponse(
+                            {
+                                "success": False,
+                                "message": "Each keyword must be a string",
+                            },
+                            status=400,
+                        )
+                    processed_kw = kw.strip().lower()
+                    if processed_kw:
+                        processed_keywords.append(processed_kw)
+                user.known_keywords = processed_keywords
+
             # Handle password change
             if "current_password" in data and "new_password" in data:
                 if not user.check_password(data["current_password"]):
@@ -250,6 +279,7 @@ class ProfileView(View):
                         "username": user.username,
                         "email": user.email,
                         "bio": user.bio,
+                        "known_keywords": user.known_keywords,
                     },
                 }
             )
