@@ -3,7 +3,7 @@ import json
 
 
 def call_openai_model(
-    model: str, system_prompt: str, user_prompt: str, temperature: float = 0.0, **kwargs
+    model: str, system_prompt: str, user_prompt: str, temperature: float = 1.0, **kwargs
 ) -> str:
     client = OpenAI()
     response = client.chat.completions.create(
@@ -19,12 +19,12 @@ def call_openai_model(
 
 
 def call_model_with_json_response(
-    system_prompt, user_prompt, retries=5, temperature=0.0
+    system_prompt, user_prompt, retries=5, temperature=1.0
 ):
     for _ in range(retries):
         try:
             result = call_openai_model(
-                model="gpt-4o",
+                model="gpt-5",
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 temperature=temperature,
